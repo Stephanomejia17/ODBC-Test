@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Proyecto específico
+output/logs/
+*.xlsx
+*.xls
+config/database_credentials.py
+
+# OS
+.DS_Store
+Thumbs.db
