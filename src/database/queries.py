@@ -1,6 +1,7 @@
 from config.settings import DEPOSITO_ID
 from datetime import datetime
 import random
+import struct
 
 
 class DatabaseQueries:
@@ -45,16 +46,53 @@ class DatabaseQueries:
 
     @staticmethod
     def get_costo_producto(cursor, codigo_producto, deposito_id):
-        query = f"""
+        """
+        Obtiene el costo unitario del producto desde FX_COSTOS[23] en SFixed
+        Si no existe, calcula desde inventario inicial en SinvDep
+        """
+        # PASO 1: Intentar obtener desde FX_COSTOS[23] en tabla SFixed
+        query_sfixed = f"""
+            SELECT FX_COSTOS
+            FROM SFixed
+            WHERE FX_CODIGO = '{codigo_producto}'
+            AND FX_TIPO = 'B'
+        """
+        cursor.execute(query_sfixed)
+        r_sfixed = cursor.fetchone()
+
+        if r_sfixed and r_sfixed.FX_COSTOS:
+            blob_data = r_sfixed.FX_COSTOS
+
+            # Interpretar posición [23] como float64 (little-endian)
+            try:
+                # Posición 23 * 8 bytes = offset 184
+                start = 23 * 8
+                end = start + 8
+
+                if len(blob_data) >= end:
+                    costo_pos23 = struct.unpack('<d', blob_data[start:end])[0]
+
+                    # Si el costo es válido y mayor que cero, usarlo
+                    if costo_pos23 > 0.0001:
+                        return costo_pos23
+            except Exception as e:
+                # Si hay error al leer el BLOB, continuar con fallback
+                pass
+
+        # PASO 2: Fallback - calcular desde inventario inicial en SinvDep
+        query_invdep = f"""
             SELECT FT_INVENTARIOINICIALBS, FT_INVENTARIOINICIALUND
             FROM SinvDep
             WHERE FT_CODIGOPRODUCTO = '{codigo_producto}'
             AND FT_CODIGODEPOSITO = {deposito_id}
         """
-        cursor.execute(query)
-        r = cursor.fetchone()
-        if r and r.FT_INVENTARIOINICIALUND:
-            return r.FT_INVENTARIOINICIALBS / r.FT_INVENTARIOINICIALUND
+        cursor.execute(query_invdep)
+        r_invdep = cursor.fetchone()
+
+        if r_invdep and r_invdep.FT_INVENTARIOINICIALUND and r_invdep.FT_INVENTARIOINICIALUND > 0:
+            return r_invdep.FT_INVENTARIOINICIALBS / r_invdep.FT_INVENTARIOINICIALUND
+
+        # Si no hay datos, retornar 0
         return 0.0
 
     @staticmethod
@@ -86,6 +124,30 @@ class DatabaseQueries:
         materias = DatabaseQueries.get_materias_primas(cursor, codigo_producto)
         serial = random.randint(100000000, 999999999)
 
+        # ================================================================
+        # CALCULAR COSTOS TOTALES
+        # ================================================================
+        costo_total_orden = 0.0
+
+        print(f"\n   💰 Calculando costos desde FX_COSTOS[23]:")
+
+        for mp in materias:
+            consumo = cantidad_fabricar * mp.FED_CANTIDAD
+            costo_unitario = DatabaseQueries.get_costo_producto(cursor, mp.FED_PRODUCTO, DEPOSITO_ID)
+            costo_total_mp = consumo * costo_unitario
+            costo_total_orden += costo_total_mp
+
+            print(f"      • {mp.FED_PRODUCTO}")
+            print(f"        - Costo unitario (FX_COSTOS[23]): ${costo_unitario:,.2f}")
+            print(f"        - Cantidad consumo: {consumo:.4f}")
+            print(f"        - Costo total MP: ${costo_total_mp:,.2f}")
+
+        print(f"\n   💵 COSTO TOTAL DE LA ORDEN: ${costo_total_orden:,.2f}")
+        print(f"   💵 COSTO UNITARIO PRODUCTO: ${costo_total_orden / cantidad_fabricar:,.2f}")
+
+        # ================================================================
+        # INSERTAR EN SDetalleInv (Transferencias)
+        # ================================================================
         for mp in materias:
             consumo = cantidad_fabricar * mp.FED_CANTIDAD
             costo = DatabaseQueries.get_costo_producto(cursor, mp.FED_PRODUCTO, DEPOSITO_ID)
@@ -109,6 +171,9 @@ class DatabaseQueries:
                 )
             """)
 
+        # ================================================================
+        # INSERTAR EN SEnsamblesDetalle
+        # ================================================================
         for mp in materias:
             consumo = cantidad_fabricar * mp.FED_CANTIDAD
             costo = DatabaseQueries.get_costo_producto(cursor, mp.FED_PRODUCTO, DEPOSITO_ID)
@@ -128,15 +193,22 @@ class DatabaseQueries:
                 )
             """)
 
+        # ================================================================
+        # ACTUALIZAR CONTADORES EN SSistema
+        # ================================================================
         cursor.execute("""
             UPDATE SSistema
             SET NO_TRANSFERENCIAS = NO_TRANSFERENCIAS + 1,
                 NO_ORDENENSAMBLE = NO_ORDENENSAMBLE + 1
         """)
 
+        # ================================================================
+        # ACTUALIZAR EXISTENCIAS EN AMBOS DEPÓSITOS
+        # ================================================================
         for mp in materias:
             consumo = cantidad_fabricar * mp.FED_CANTIDAD
 
+            # Restar del depósito origen
             cursor.execute(f"""
                 UPDATE SinvDep
                 SET FT_EXISTENCIA = FT_EXISTENCIA - {consumo}
@@ -144,6 +216,7 @@ class DatabaseQueries:
                 AND FT_CODIGODEPOSITO = {DEPOSITO_ID}
             """)
 
+            # Sumar al depósito destino
             cursor.execute(f"""
                 UPDATE SinvDep
                 SET FT_EXISTENCIA = FT_EXISTENCIA + {consumo}
@@ -151,7 +224,9 @@ class DatabaseQueries:
                 AND FT_CODIGODEPOSITO = {deposito_destino}
             """)
 
-        # ⚠️ CORRECCIÓN PRINCIPAL: Incluir TODOS los campos que A2 requiere
+        # ================================================================
+        # INSERTAR ORDEN DE ENSAMBLE CON COSTOS CALCULADOS
+        # ================================================================
         cursor.execute(f"""
             INSERT INTO SEnsamblesOrden (
                 FEO_DOCUMENTO, FEO_CODEPRODUCTO, FEO_CANTIDADORDEN,
@@ -171,7 +246,7 @@ class DatabaseQueries:
                 '{fecha}', '1899-12-30', '{hora}', 
                 4, 'MASTER', 'PYTHON',
                 1, 0,
-                0, 0,
+                {costo_total_orden}, {costo_total_orden},
                 0, 0,
                 0, 0,
                 0, 0,
@@ -182,6 +257,9 @@ class DatabaseQueries:
             )
         """)
 
+        # ================================================================
+        # INSERTAR OPERACIÓN DE INVENTARIO
+        # ================================================================
         cursor.execute(f"""
             INSERT INTO SOperacionInv (
                 FTI_DOCUMENTO, FTI_TIPO, FTI_STATUS, FTI_FECHAEMISION
