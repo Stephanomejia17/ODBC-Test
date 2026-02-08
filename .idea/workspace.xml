@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="04790b01-b410-4060-a3c6-13cddd6dfdb6" name="Changes" comment="Modificacion de campos necesarios para A2">
+    <list default="true" id="04790b01-b410-4060-a3c6-13cddd6dfdb6" name="Changes" comment="Costos para las ordenes">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/database/queries.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/database/queries.py" afterDir="false" />
     </list>
@@ -108,11 +108,20 @@
       <option name="project" value="LOCAL" />
       <updated>1770576988842</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Costos para las ordenes">
+      <option name="closed" value="true" />
+      <created>1770578723575</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1770578723575</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Modificacion de campos necesarios para A2" />
-    <option name="LAST_COMMIT_MESSAGE" value="Modificacion de campos necesarios para A2" />
+    <MESSAGE value="Costos para las ordenes" />
+    <option name="LAST_COMMIT_MESSAGE" value="Costos para las ordenes" />
   </component>
 </project>

@@ -1,7 +1,6 @@
 from config.settings import DEPOSITO_ID
 from datetime import datetime
 import random
-import struct
 
 
 class DatabaseQueries:
@@ -47,12 +46,12 @@ class DatabaseQueries:
     @staticmethod
     def get_costo_producto(cursor, codigo_producto, deposito_id):
         """
-        Obtiene el costo unitario del producto desde FX_COSTOS[23] en SFixed
-        Si no existe, calcula desde inventario inicial en SinvDep
+        Obtiene el costo unitario del producto usando el MISMO método que A2:
+        FX_COSTOINICIALINV / FX_EXISTENCIAINICIAL desde tabla SFixed
         """
-        # PASO 1: Intentar obtener desde FX_COSTOS[23] en tabla SFixed
+        # MÉTODO PRINCIPAL: Usar FX_COSTOINICIALINV desde SFixed (igual que A2)
         query_sfixed = f"""
-            SELECT FX_COSTOS
+            SELECT FX_COSTOINICIALINV, FX_EXISTENCIAINICIAL
             FROM SFixed
             WHERE FX_CODIGO = '{codigo_producto}'
             AND FX_TIPO = 'B'
@@ -60,26 +59,12 @@ class DatabaseQueries:
         cursor.execute(query_sfixed)
         r_sfixed = cursor.fetchone()
 
-        if r_sfixed and r_sfixed.FX_COSTOS:
-            blob_data = r_sfixed.FX_COSTOS
+        if r_sfixed and r_sfixed.FX_EXISTENCIAINICIAL and r_sfixed.FX_EXISTENCIAINICIAL > 0:
+            costo_sfixed = r_sfixed.FX_COSTOINICIALINV / r_sfixed.FX_EXISTENCIAINICIAL
+            if costo_sfixed > 0.0001:
+                return costo_sfixed
 
-            # Interpretar posición [23] como float64 (little-endian)
-            try:
-                # Posición 23 * 8 bytes = offset 184
-                start = 23 * 8
-                end = start + 8
-
-                if len(blob_data) >= end:
-                    costo_pos23 = struct.unpack('<d', blob_data[start:end])[0]
-
-                    # Si el costo es válido y mayor que cero, usarlo
-                    if costo_pos23 > 0.0001:
-                        return costo_pos23
-            except Exception as e:
-                # Si hay error al leer el BLOB, continuar con fallback
-                pass
-
-        # PASO 2: Fallback - calcular desde inventario inicial en SinvDep
+        # FALLBACK: Si no hay datos en SFixed, usar SinvDep
         query_invdep = f"""
             SELECT FT_INVENTARIOINICIALBS, FT_INVENTARIOINICIALUND
             FROM SinvDep
@@ -92,7 +77,7 @@ class DatabaseQueries:
         if r_invdep and r_invdep.FT_INVENTARIOINICIALUND and r_invdep.FT_INVENTARIOINICIALUND > 0:
             return r_invdep.FT_INVENTARIOINICIALBS / r_invdep.FT_INVENTARIOINICIALUND
 
-        # Si no hay datos, retornar 0
+        # Si no hay datos en ninguna tabla, retornar 0
         return 0.0
 
     @staticmethod
@@ -129,7 +114,8 @@ class DatabaseQueries:
         # ================================================================
         costo_total_orden = 0.0
 
-        print(f"\n   💰 Calculando costos desde FX_COSTOS[23]:")
+        print(f"\n   💰 Calculando costos (método A2):")
+        print(f"      Usando: FX_COSTOINICIALINV / FX_EXISTENCIAINICIAL")
 
         for mp in materias:
             consumo = cantidad_fabricar * mp.FED_CANTIDAD
@@ -138,7 +124,7 @@ class DatabaseQueries:
             costo_total_orden += costo_total_mp
 
             print(f"      • {mp.FED_PRODUCTO}")
-            print(f"        - Costo unitario (FX_COSTOS[23]): ${costo_unitario:,.2f}")
+            print(f"        - Costo unitario (SFixed): ${costo_unitario:,.2f}")
             print(f"        - Cantidad consumo: {consumo:.4f}")
             print(f"        - Costo total MP: ${costo_total_mp:,.2f}")
 
