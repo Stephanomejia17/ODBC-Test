@@ -18,13 +18,15 @@ class DatabaseQueries:
     @staticmethod
     def get_materias_primas(cursor, codigo_producto):
         query = f"""
-            SELECT d.FED_PRODUCTO, d.FED_CANTIDAD, s.FT_EXISTENCIA
-            FROM SEnsamblesDetalle d
+            SELECT e.FEN_CODEPARTE AS FED_PRODUCTO, 
+                   e.FEN_CANTIDAD AS FED_CANTIDAD, 
+                   s.FT_EXISTENCIA
+            FROM SEnsambles e
             JOIN SinvDep s 
-              ON s.FT_CODIGOPRODUCTO = d.FED_PRODUCTO
+              ON s.FT_CODIGOPRODUCTO = e.FEN_CODEPARTE
              AND s.FT_CODIGODEPOSITO = {DEPOSITO_ID}
-            WHERE d.FED_CODEPRINCIPAL = '{codigo_producto}'
-              AND d.FED_STATUS = 1
+            WHERE e.FEN_CODIGO = '{codigo_producto}'
+              AND e.FEN_CODEPARTE <> '$$$$$$$$$'
         """
         cursor.execute(query)
         return cursor.fetchall()
