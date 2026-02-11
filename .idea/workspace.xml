@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="04790b01-b410-4060-a3c6-13cddd6dfdb6" name="Changes" comment="Costos para las ordenes">
+    <list default="true" id="04790b01-b410-4060-a3c6-13cddd6dfdb6" name="Changes" comment="Costos para las ordenes fixed">
+      <change afterPath="$PROJECT_DIR$/SistemaTroquelado.spec" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crear_ejecutable.bat" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/database/queries.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/database/queries.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/app_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/app_window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,19 +35,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/steph/PycharmProjects/DBISAM-Automation/assets/images&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/Users/steph/PycharmProjects/DBISAM-Automation"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\steph\PycharmProjects\DBISAM-Automation" />
       <recent name="C:\Users\steph\PycharmProjects\DBISAM-Automation\assets\images" />
     </key>
   </component>
@@ -116,12 +121,21 @@
       <option name="project" value="LOCAL" />
       <updated>1770578723575</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Costos para las ordenes fixed">
+      <option name="closed" value="true" />
+      <created>1770580237903</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1770580237903</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Modificacion de campos necesarios para A2" />
     <MESSAGE value="Costos para las ordenes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Costos para las ordenes" />
+    <MESSAGE value="Costos para las ordenes fixed" />
+    <option name="LAST_COMMIT_MESSAGE" value="Costos para las ordenes fixed" />
   </component>
 </project>

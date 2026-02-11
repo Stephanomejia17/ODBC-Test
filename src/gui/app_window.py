@@ -161,37 +161,28 @@ class FabricacionApp:
 
     def add_logo(self, parent):
         if not PIL_AVAILABLE:
-            print("⚠ PIL/Pillow no está instalado. Logo deshabilitado.")
             return
 
         try:
             logo_path = os.path.join(BASE_DIR, "assets", "images", "enthraLogo.png")
-
             if not os.path.exists(logo_path):
-                print(f"⚠ Logo no encontrado en: {logo_path}")
                 return
 
             imagen = Image.open(logo_path)
             imagen = imagen.resize((100, 40), Image.Resampling.LANCZOS)
             self.logo = ImageTk.PhotoImage(imagen)
 
-            logo_label = tk.Label(
-                parent,
-                image=self.logo,
-                bg=COLORS['bg_main']
-            )
+            logo_label = tk.Label(parent, image=self.logo, bg=COLORS['bg_main'])
             logo_label.pack(pady=10)
-            print(f"✓ Logo cargado correctamente")
 
-        except Exception as e:
-            print(f"⚠ Error al cargar logo: {e}")
+        except Exception:
+            pass
 
     def add_hover_effect(self, button, color_normal, color_hover):
         button.bind("<Enter>", lambda e: button.config(bg=color_hover))
         button.bind("<Leave>", lambda e: button.config(bg=color_normal))
 
     def print_welcome_message(self):
-        # Logo ASCII de enthra
         print("""                                              
                                                ###                                          
                                       ###      ###                                          
@@ -237,9 +228,9 @@ class FabricacionApp:
                 fg=COLORS['text_success']
             )
             self.btn_procesar.config(state=tk.NORMAL)
-            print(f"\n✓ Archivo cargado: {filename}")
+            print(f"✓ Archivo cargado: {filename}\n")
         else:
-            print("\n✗ No se seleccionó ningún archivo")
+            print("✗ No se seleccionó ningún archivo\n")
 
     def limpiar_consola(self):
         self.console.delete(1.0, tk.END)
@@ -247,11 +238,11 @@ class FabricacionApp:
 
     def iniciar_procesamiento(self):
         if not self.excel_path:
-            print("\n✗ ERROR: No hay archivo Excel cargado")
+            print("✗ ERROR: No hay archivo Excel cargado\n")
             return
 
         if self.processing:
-            print("\n⚠ Ya hay un proceso en ejecución")
+            print("⚠ Ya hay un proceso en ejecución\n")
             return
 
         self.btn_cargar.config(state=tk.DISABLED)
@@ -268,68 +259,47 @@ class FabricacionApp:
         cur = None
 
         try:
-            print("\n" + "=" * 70)
+            print("=" * 70)
             print("INICIANDO PROCESO DE TROQUELADO")
-            print("Modo: REPLICACIÓN COMPLETA DE A2")
             print("=" * 70 + "\n")
 
-            # ================================================================
-            # PASO 1: LEER ARCHIVO EXCEL
-            # ================================================================
-            print("📄 PASO 1: Leyendo archivo Excel...")
-            print("-" * 70)
+            # Leer archivo Excel
             df = self.excel_handler.read_excel(self.excel_path)
-            print(f"✓ Archivo leído correctamente")
-            print(f"✓ Productos encontrados: {len(df)}")
-            print(f"✓ Columnas requeridas: FT_CODIGOPRODUCTO, NO_FABRICADOS")
+            print(f"✓ Productos en archivo: {len(df)}\n")
 
-            # Validar columnas requeridas
+            # Validar columnas
             if 'FT_CODIGOPRODUCTO' not in df.columns or 'NO_FABRICADOS' not in df.columns:
                 raise Exception("El archivo Excel debe contener las columnas 'FT_CODIGOPRODUCTO' y 'NO_FABRICADOS'")
 
-            print("")
-
-            # ================================================================
-            # PASO 2: CONECTAR A BASE DE DATOS
-            # ================================================================
-            print("🔌 PASO 2: Conectando a base de datos...")
-            print("-" * 70)
+            # Conectar a BD
             conn = self.db_connection.connect()
             cur = conn.cursor()
-            print("✓ Conexión establecida exitosamente")
-            print(f"✓ Depósito de trabajo: {DEPOSITO_ID}")
+            print(f"✓ Conexión establecida (Depósito: {DEPOSITO_ID})\n")
 
-            # Obtener depósito destino CON VALIDACIÓN
+            # Validar depósito destino
             try:
                 deposito_destino = self.db_queries.get_deposito_destino(cur)
-                print(f"✓ Depósito destino (producción): {deposito_destino}")
 
-                # Validación adicional de seguridad
                 if deposito_destino == DEPOSITO_ID:
                     raise Exception(
-                        f"\n❌ CONFIGURACIÓN INVÁLIDA DETECTADA:\n"
+                        f"❌ CONFIGURACIÓN INVÁLIDA:\n"
                         f"   Depósito origen ({DEPOSITO_ID}) = Depósito destino ({deposito_destino})\n"
-                        f"   Las transferencias DEBEN ser entre depósitos DIFERENTES\n"
-                        f"\n   Por favor, corrija la configuración en la base de datos:\n"
-                        f"   UPDATE SSistema SET DEPOSITO_ENSAMBLEDESTINO = '2'\n"
-                        f"   (Use un depósito diferente a {DEPOSITO_ID})\n"
+                        f"   Corrija en BD: UPDATE SSistema SET DEPOSITO_ENSAMBLEDESTINO = '2'\n"
                     )
 
+                print(f"✓ Depósito destino: {deposito_destino}\n")
+
             except Exception as e:
-                error_msg = str(e)
-                print(f"\n{'='*70}")
+                print(f"{'='*70}")
                 print("❌ ERROR DE CONFIGURACIÓN")
-                print('='*70)
-                print(error_msg)
-                print('='*70)
+                print(f"{'='*70}")
+                print(str(e))
+                print(f"{'='*70}\n")
                 raise Exception("No se puede continuar: Configuración de depósito inválida")
 
-            print("")
-
-            # ================================================================
-            # PASO 3: PROCESAR CADA PRODUCTO
-            # ================================================================
-            print("📦 PASO 3: Procesando productos...")
+            # Procesar cada producto
+            print("=" * 70)
+            print("PROCESANDO PRODUCTOS")
             print("=" * 70 + "\n")
 
             exitosos = 0
@@ -338,250 +308,100 @@ class FabricacionApp:
 
             for idx, row in df.iterrows():
                 try:
-                    # Normalizar código de producto
                     FT_CODIGOPRODUCTO = str(row["FT_CODIGOPRODUCTO"]).strip().zfill(8)
                     NO_FABRICADOS = float(row["NO_FABRICADOS"])
 
-                    print("┌" + "─" * 68 + "┐")
-                    print(f"│ PRODUCTO {idx + 1}/{len(df)}: {FT_CODIGOPRODUCTO}".ljust(69) + "│")
-                    print("├" + "─" * 68 + "┤")
-                    print(f"│ Cantidad a fabricar: {NO_FABRICADOS}".ljust(69) + "│")
-                    print("└" + "─" * 68 + "┘\n")
+                    print(f"[{idx + 1}/{len(df)}] Procesando: {FT_CODIGOPRODUCTO} (Cantidad: {NO_FABRICADOS})")
 
-                    # --------------------------------------------------------
-                    # 3.1: Verificar existencia del producto
-                    # --------------------------------------------------------
-                    print("   [1/6] Verificando producto terminado...")
+                    # Verificar producto
                     prod_ini = self.db_queries.get_producto_existencia(cur, FT_CODIGOPRODUCTO)
-
                     if not prod_ini:
-                        raise Exception(
-                            f"El producto {FT_CODIGOPRODUCTO} no existe en el depósito {DEPOSITO_ID}"
-                        )
+                        raise Exception(f"Producto no existe en depósito {DEPOSITO_ID}")
 
-                    print(f"   ✓ Producto encontrado")
-                    print(f"   ✓ Stock actual: {prod_ini.FT_EXISTENCIA:.2f} unidades")
-
-                    # --------------------------------------------------------
-                    # 3.2: Obtener fórmula de ensamble (materias primas)
-                    # --------------------------------------------------------
-                    print(f"\n   [2/6] Obteniendo fórmula de ensamble...")
+                    # Obtener fórmula
                     materias = self.db_queries.get_materias_primas(cur, FT_CODIGOPRODUCTO)
-
                     if not materias or len(materias) == 0:
-                        raise Exception(
-                            f"El producto {FT_CODIGOPRODUCTO} no tiene fórmula de ensamble definida "
-                            f"(no hay materias primas activas en SEnsamblesDetalle)"
-                        )
+                        raise Exception("Sin fórmula de ensamble")
 
-                    print(f"   ✓ Fórmula encontrada: {len(materias)} materia(s) prima(s)")
+                    print(f"   ✓ Fórmula: {len(materias)} materia(s) prima(s)")
 
-                    # Mostrar fórmula
-                    print(f"\n   📋 Composición del producto:")
-                    total_consumo_valor = 0
-                    for mp in materias:
-                        consumo_unitario = mp.FED_CANTIDAD
-                        consumo_total = NO_FABRICADOS * consumo_unitario
-
-                        # Calcular costo
-                        try:
-                            costo_mp = self.db_queries.get_costo_producto(cur, mp.FED_PRODUCTO, DEPOSITO_ID)
-                            valor_consumo = consumo_total * costo_mp
-                            total_consumo_valor += valor_consumo
-                        except:
-                            costo_mp = 0
-                            valor_consumo = 0
-
-                        print(f"      • {mp.FED_PRODUCTO}")
-                        print(f"        - Por unidad: {consumo_unitario:.4f}")
-                        print(f"        - Consumo total: {consumo_total:.4f}")
-                        print(f"        - Costo unitario: ${costo_mp:,.2f}")
-                        print(f"        - Valor total: ${valor_consumo:,.2f}")
-
-                    print(f"\n   💰 Valor total de materias primas: ${total_consumo_valor:,.2f}")
-
-                    # --------------------------------------------------------
-                    # 3.3: Validar disponibilidad de materias primas
-                    # --------------------------------------------------------
-                    print(f"\n   [3/6] Validando disponibilidad de stock...")
-
+                    # Validar stock
                     faltantes = []
                     for mp in materias:
-                        consumo_total = NO_FABRICADOS * mp.FED_CANTIDAD
-
-                        if mp.FT_EXISTENCIA < consumo_total:
-                            faltante = consumo_total - mp.FT_EXISTENCIA
-                            faltantes.append({
-                                'codigo': mp.FED_PRODUCTO,
-                                'disponible': mp.FT_EXISTENCIA,
-                                'requerido': consumo_total,
-                                'faltante': faltante
-                            })
-                            print(f"   ❌ {mp.FED_PRODUCTO}: Stock={mp.FT_EXISTENCIA:.2f}, Requerido={consumo_total:.2f}, Falta={faltante:.2f}")
-                        else:
-                            print(f"   ✓ {mp.FED_PRODUCTO}: Stock={mp.FT_EXISTENCIA:.2f}, Requerido={consumo_total:.2f} ✓")
+                        consumo = NO_FABRICADOS * mp.FED_CANTIDAD
+                        if mp.FT_EXISTENCIA < consumo:
+                            faltantes.append(mp.FED_PRODUCTO)
 
                     if faltantes:
-                        mensaje_error = f"STOCK INSUFICIENTE - Faltan {len(faltantes)} materia(s) prima(s):\n"
-                        for f in faltantes:
-                            mensaje_error += f"      • {f['codigo']}: Falta {f['faltante']:.2f} unidades\n"
-                        raise Exception(mensaje_error)
+                        raise Exception(f"Stock insuficiente: {', '.join(faltantes)}")
 
-                    print(f"   ✓ Stock suficiente para todas las materias primas")
+                    print(f"   ✓ Stock validado")
 
-                    # --------------------------------------------------------
-                    # 3.4: Obtener siguiente número de documento
-                    # --------------------------------------------------------
-                    print(f"\n   [4/6] Generando número de documento...")
-                    doc_orden = self.db_queries.get_siguiente_documento(
-                        cur, 'SEnsamblesOrden', 'FEO_DOCUMENTO'
-                    )
-                    doc_operacion = self.db_queries.get_siguiente_documento(
-                        cur, 'SOperacionInv', 'FTI_DOCUMENTO'
-                    )
-                    print(f"   ✓ Documento orden: {doc_orden}")
-                    print(f"   ✓ Documento operación: {doc_operacion}")
-
-                    # --------------------------------------------------------
-                    # 3.5: Procesar ensamble completo (6 operaciones)
-                    # --------------------------------------------------------
-                    print(f"\n   [5/6] Procesando ensamble completo...")
-                    print(f"   ⚙️  Replicando comportamiento de A2...")
-                    print(f"   📝 Operaciones a realizar:")
-                    print(f"      1. INSERT en SDetalleInv (Transferencia)")
-                    print(f"      2. INSERT en SEnsamblesDetalle (Detalles)")
-                    print(f"      3. UPDATE en SSistema (contadores)")
-                    print(f"      4. UPDATE en SinvDep (ambos depósitos)")
-                    print(f"      5. INSERT en SEnsamblesOrden")
-                    print(f"      6. INSERT en SOperacionInv")
-                    print("")
-
+                    # Procesar ensamble
                     documento = self.db_queries.procesar_ensamble_completo(
                         cur, FT_CODIGOPRODUCTO, NO_FABRICADOS
                     )
 
-                    # --------------------------------------------------------
-                    # 3.6: Commit de la transacción
-                    # --------------------------------------------------------
-                    print(f"\n   [6/6] Confirmando transacción...")
+                    # Commit
                     conn.commit()
-                    print(f"   ✅ Transacción confirmada exitosamente")
 
-                    # Resumen del producto
-                    print(f"\n   ╔════════════════════════════════════════════════════════════╗")
-                    print(f"   ║  ✅ PRODUCTO PROCESADO EXITOSAMENTE                        ║")
-                    print(f"   ╠════════════════════════════════════════════════════════════╣")
-                    print(f"   ║  Producto: {FT_CODIGOPRODUCTO}                                  ║")
-                    print(f"   ║  Cantidad: {NO_FABRICADOS}                                          ║")
-                    print(f"   ║  Documento: {documento}                                    ║")
-                    print(f"   ║  Materias primas: {len(materias)}                                     ║")
-                    print(f"   ║  Valor: ${total_consumo_valor:,.2f}".ljust(61) + "║")
-                    print(f"   ║  Estado: EMITIDA (lista para cerrar en A2)                ║")
-                    print(f"   ╚════════════════════════════════════════════════════════════╝")
-
+                    print(f"   ✅ PROCESADO - Doc: {documento}\n")
                     exitosos += 1
 
                 except Exception as e:
-                    # Rollback de la transacción
                     conn.rollback()
-
-                    print(f"\n   ╔════════════════════════════════════════════════════════════╗")
-                    print(f"   ║  ❌ ERROR AL PROCESAR PRODUCTO                             ║")
-                    print(f"   ╠════════════════════════════════════════════════════════════╣")
-                    print(f"   ║  Producto: {FT_CODIGOPRODUCTO}                                  ║")
-                    print(f"   ║  Transacción revertida (ROLLBACK)                         ║")
-                    print(f"   ╚════════════════════════════════════════════════════════════╝")
-                    print(f"\n   📋 Detalle del error:")
-
-                    error_msg = str(e)
-                    # Dividir mensaje largo en líneas
-                    for line in error_msg.split('\n'):
-                        if line.strip():
-                            print(f"      {line}")
-
+                    print(f"   ❌ ERROR: {str(e)}\n")
                     fallidos += 1
                     productos_fallidos.append({
                         'codigo': FT_CODIGOPRODUCTO,
                         'error': str(e)
                     })
 
-                print("\n")
-
-            # ================================================================
-            # PASO 4: RESUMEN FINAL
-            # ================================================================
-            print("\n" + "=" * 70)
-            print("RESUMEN FINAL DEL PROCESO")
+            # Resumen final
             print("=" * 70)
-            print(f"\n📊 Estadísticas:")
-            print(f"   • Total productos en Excel: {len(df)}")
-            print(f"   • Productos procesados exitosamente: {exitosos}")
-            print(f"   • Productos con errores: {fallidos}")
+            print("RESUMEN FINAL")
+            print("=" * 70)
+            print(f"Total productos: {len(df)}")
+            print(f"Exitosos: {exitosos}")
+            print(f"Fallidos: {fallidos}")
 
             if exitosos > 0:
-                print(f"\n✅ Operaciones completadas para {exitosos} producto(s):")
-                print(f"   • Materias primas transferidas entre depósitos")
-                print(f"   • Órdenes de ensamble emitidas")
-                print(f"   • Inventarios actualizados correctamente")
-                print(f"   • Contadores del sistema incrementados")
-                print(f"\n⚠️  IMPORTANTE:")
-                print(f"   Las órdenes están EMITIDAS y deben cerrarse desde A2 para:")
-                print(f"   • Generar el informe de producción")
-                print(f"   • Incrementar el stock del producto terminado")
-                print(f"   • Completar el ciclo de fabricación")
+                print(f"\n✅ {exitosos} órdenes emitidas correctamente")
+                print("⚠️  Recordar cerrar las órdenes desde A2")
 
             if fallidos > 0:
-                print(f"\n❌ Productos con errores ({fallidos}):")
+                print(f"\n❌ Productos con errores:")
                 for pf in productos_fallidos:
-                    print(f"   • {pf['codigo']}: {pf['error'][:80]}...")
+                    print(f"   • {pf['codigo']}: {pf['error'][:50]}...")
 
-            print("\n" + "=" * 70)
-
-            if exitosos == len(df):
-                print("🎉 PROCESO COMPLETADO EXITOSAMENTE")
-            elif exitosos > 0:
-                print("⚠️  PROCESO COMPLETADO CON ADVERTENCIAS")
-            else:
-                print("❌ PROCESO COMPLETADO CON ERRORES")
-
-            print("=" * 70 + "\n")
+            print("\n" + "=" * 70 + "\n")
 
         except Exception as e:
-            print(f"\n" + "=" * 70)
-            print("❌ ERROR CRÍTICO EN EL PROCESO")
-            print("=" * 70)
-            print(f"\n{e}\n")
-
-            import traceback
-            print("📋 Traceback completo:")
-            print("-" * 70)
-            traceback.print_exc()
-            print("-" * 70)
+            print(f"{'='*70}")
+            print("❌ ERROR CRÍTICO")
+            print(f"{'='*70}")
+            print(f"{e}\n")
 
             if conn:
                 try:
                     conn.rollback()
-                    print("\n⚠️  Se ha revertido cualquier cambio pendiente (ROLLBACK)")
+                    print("⚠️  Cambios revertidos (ROLLBACK)\n")
                 except:
                     pass
 
         finally:
-            # Cerrar cursor y conexión
             if cur:
                 try:
                     cur.close()
-                    print("\n🔌 Cursor cerrado")
                 except:
                     pass
 
             if conn:
                 try:
                     self.db_connection.close(conn)
-                    print("🔌 Conexión a base de datos cerrada")
                 except:
                     pass
 
-            # Finalizar en el hilo principal
             self.root.after(0, self.finalizar_procesamiento)
 
     def finalizar_procesamiento(self):
@@ -589,4 +409,4 @@ class FabricacionApp:
         self.btn_cargar.config(state=tk.NORMAL)
         self.btn_procesar.config(state=tk.NORMAL)
         self.processing = False
-        print("\n✓ Sistema listo para procesar nuevos archivos\n")
+        print("✓ Sistema listo\n")
